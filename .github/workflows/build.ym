@@ -1,0 +1,50 @@
+name: Build APK
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: pack
+      - name: Descompactar projeto
+        run: unzip -q pack/MANXFlatOut1-Android.zip -d .
+      - uses: actions/checkout@v4
+        with:
+          repository: RetroRecompilations/MANXFramework
+          path: MANXFramework
+      - uses: actions/checkout@v4
+        with:
+          repository: RetroRecompilations/MANXFlatOut1
+          path: MANXFlatOut1
+      - uses: actions/checkout@v4
+        with:
+          repository: libsdl-org/SDL
+          ref: release-3.2.x
+          path: MANXFlatOut1-Android/SDL
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+      - name: Instalar NDK e CMake
+        shell: bash {0}
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;27.0.12077973" "cmake;3.22.1" "platforms;android-35" > /dev/null
+      - name: Compilar
+        working-directory: MANXFlatOut1-Android
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          gradle assembleDebug --no-daemon 2>&1 | tee ../build.log
+      - name: Enviar log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+      - name: Enviar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlatOut1-apk
+          path: MANXFlatOut1-Android/app/build/outputs/apk/debug/app-debug.apk
